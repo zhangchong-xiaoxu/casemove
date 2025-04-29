@@ -2,7 +2,7 @@ const fs = require('fs');
 const VDF = require('@node-steam/vdf');
 const axios = require('axios');
 
-const itemsLink = 'files.skinledger.com/counterstrike/items_game.txt';
+const itemsLink = 'https://files.skinledger.com/counterstrike/items_game.txt';
 const translationsLink =
   'https://files.skinledger.com/counterstrike/csgo_english.txt';
 
@@ -89,7 +89,7 @@ async function updateItems(items) {
     returnValue['items'][1209];
     items.setCSGOItems(returnValue);
   } catch (err) {
-    console.log('Error occurred during items parsing');
+    console.log('Error occurred during items parsing' + err);
     fileGetError(items);
   }
 }

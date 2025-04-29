@@ -1,5 +1,5 @@
 import 'core-js/stable';
-import { BrowserWindow, app, ipcMain, session, shell } from 'electron';
+import { BrowserWindow, app, ipcMain, shell } from 'electron';
 import * as fs from 'fs';
 import GlobalOffensive from 'globaloffensive';
 import os from 'os';
@@ -32,6 +32,10 @@ import log from 'electron-log';
 import { emitterAccount } from '../emitters';
 import { flowLoginRegularQR } from './helpers/login/flowLoginRegularQR';
 import { WalletInterface } from '../renderer/interfaces/states';
+// import installExtension, {
+//   REACT_DEVELOPER_TOOLS,
+//   REDUX_DEVTOOLS,
+// } from 'electron-devtools-installer';
 
 log.info('App starting...');
 
@@ -218,40 +222,18 @@ if (!gotTheLock) {
     .whenReady()
     .then(async () => {
       currentLocale = app.getLocale();
-      console.log('Currentlocal', currentLocale);
+      console.log('Current local', currentLocale);
 
-      if (process.env.NODE_ENV === 'development') {
-        try {
-          const extensions = [
-            {
-              name: 'React Developer Tools',
-              id: 'fmkadmapgofadopljbjfkapdkoienihi',
-              version: '6.1.1_0',
-            },
-            {
-              name: 'Redux DevTools',
-              id: 'lmhkpmbekcpmknklioeibfkpmmfibljd',
-              version: '3.2.10_0',
-            },
-          ];
-      
-          for (const ext of extensions) {
-            const extensionPath = path.join(
-              os.homedir(),
-              `/AppData/Local/Google/Chrome/User Data/Default/Extensions/${ext.id}/${ext.version}`
-            );
-      
-            if (fs.existsSync(extensionPath)) {
-              await session.defaultSession.loadExtension(extensionPath);
-              console.log(`${ext.name} loaded successfully.`);
-            } else {
-              console.warn(`${ext.name} not found at ${extensionPath}.`);
-            }
-          }
-        } catch (error) {
-          console.error('Failed to load extensions:', error);
-        }
-      }
+      // if (process.env.NODE_ENV === 'development' && process.platform == 'win32') {
+      //   try {
+      //     await installExtension(REACT_DEVELOPER_TOOLS);
+      //     console.log('React Developer Tools installed successfully.');
+      //     await installExtension(REDUX_DEVTOOLS);
+      //     console.log('Redux DevTools installed successfully.');
+      //   } catch (error) {
+      //     console.error('Failed to install extensions:', error);
+      //   }
+      // }
 
       createWindow();
       app.on('activate', () => {
