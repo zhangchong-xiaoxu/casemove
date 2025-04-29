@@ -107,7 +107,6 @@ class items {
     this.csgoItems = value;
   }
   setTranslations(value, commandFrom) {
-    console.log(commandFrom);
     this.translation = value;
   }
 

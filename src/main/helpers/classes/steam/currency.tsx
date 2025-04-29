@@ -6,7 +6,6 @@ async function setBackUp(currencyClass) {
 }
 
 async function getLiveRates(currencyClass) {
-  console.log('here')
     let currencyConverter = new CC({isDecimalComma:true});
     currencyConverter.from('USD').to('EUR').amount(100).convert().then((response) => {
       console.log(response)
@@ -20,9 +19,8 @@ async function getLiveRates(currencyClass) {
         }
       })
     }).catch(_error => {
-       console.log('Error initilizing')
+       console.log('Error initializing...')
     } )
-    console.log('here 2')
 }
 
 class currency {

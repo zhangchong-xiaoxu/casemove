@@ -26,54 +26,16 @@ import {
 import { login } from './helpers/classes/steam/steam';
 import { tradeUps } from './helpers/classes/steam/tradeup';
 import MenuBuilder from './menu';
-import { getGithubVersion } from './scripts/versionHelper';
 import { resolveHtmlPath } from './util';
 // import log from 'electron-log';
 import log from 'electron-log';
-import { autoUpdater } from 'electron-updater';
 import { emitterAccount } from '../emitters';
 import { flowLoginRegularQR } from './helpers/login/flowLoginRegularQR';
 import { WalletInterface } from '../renderer/interfaces/states';
 
-autoUpdater.logger = log;
-// @ts-ignore
-autoUpdater.logger.transports.file.level = 'info';
 log.info('App starting...');
 
-app.on('ready', function () {
-  autoUpdater.checkForUpdatesAndNotify();
-});
-
 const find = require('find-process');
-
-autoUpdater.on('checking-for-update', () => {
-  sendUpdaterStatusToWindow('Checking for update...');
-});
-autoUpdater.on('update-available', (_info) => {
-  sendUpdaterStatusToWindow('Update available.');
-});
-autoUpdater.on('update-not-available', (_info) => {
-  sendUpdaterStatusToWindow('Update not available.');
-});
-autoUpdater.on('error', (err) => {
-  sendUpdaterStatusToWindow('Error in auto-updater. ' + err);
-});
-autoUpdater.on('download-progress', (progressObj) => {
-  let log_message = 'Download speed: ' + progressObj.bytesPerSecond;
-  log_message = log_message + ' - Downloaded ' + progressObj.percent + '%';
-  log_message =
-    log_message +
-    ' (' +
-    progressObj.transferred +
-    '/' +
-    progressObj.total +
-    ')';
-  sendUpdaterStatusToWindow(log_message);
-});
-autoUpdater.on('update-downloaded', (_info) => {
-  sendUpdaterStatusToWindow('Update downloaded');
-});
-
 async function checkSteam(): Promise<{
   pid?: number;
   status: boolean;
@@ -88,7 +50,6 @@ async function checkSteam(): Promise<{
     return {
       status: false,
     };
-    steamName = 'steam_osx';
   }
   return await find('name', steamName, true)
     .then(function (list) {
@@ -138,24 +99,8 @@ if (isDevelopment) {
   require('electron-debug')();
 }
 
-const installExtensions = async () => {
-  const installer = require('electron-devtools-installer');
-  const forceDownload = !process.env.UPGRADE_EXTENSIONS;
-  const extensions = ['REACT_DEVELOPER_TOOLS', 'REDUX_DEVTOOLS'];
-
-  return installer
-    .default(
-      extensions.map((name) => installer[name]),
-      forceDownload
-    )
-    .catch(console.log);
-};
 
 const createWindow = async () => {
-  if (isDevelopment) {
-    await installExtensions();
-  }
-
   const RESOURCES_PATH = app.isPackaged
     ? path.join(process.resourcesPath, 'assets')
     : path.join(__dirname, '../../assets');
@@ -229,7 +174,6 @@ const createWindow = async () => {
  * Add event listeners...
  */
 // Windows actions
-
 ipcMain.on('windowsActions', async (_event, message) => {
   if (message == 'min') {
     mainWindow?.minimize();
@@ -259,7 +203,6 @@ app.on('window-all-closed', () => {
 
 let myWindow = null as any;
 const gotTheLock = app.requestSingleInstanceLock();
-const reactNombers = false;
 
 if (!gotTheLock) {
   app.quit();
@@ -277,34 +220,39 @@ if (!gotTheLock) {
       currentLocale = app.getLocale();
       console.log('Currentlocal', currentLocale);
 
-      if (process.env.NODE_ENV === 'development' && reactNombers) {
-        let reactDevToolsPath = '';
-        // on windows
-        console.log(process.platform);
-        if (process.platform == 'win32') {
-          reactDevToolsPath = path.join(
-            os.homedir(),
-            '/AppData/Local/Google/Chrome/User Data/Default/Extensions/lmhkpmbekcpmknklioeibfkpmmfibljd/3.0.9_0'
-          );
+      if (process.env.NODE_ENV === 'development') {
+        try {
+          const extensions = [
+            {
+              name: 'React Developer Tools',
+              id: 'fmkadmapgofadopljbjfkapdkoienihi',
+              version: '6.1.1_0',
+            },
+            {
+              name: 'Redux DevTools',
+              id: 'lmhkpmbekcpmknklioeibfkpmmfibljd',
+              version: '3.2.10_0',
+            },
+          ];
+      
+          for (const ext of extensions) {
+            const extensionPath = path.join(
+              os.homedir(),
+              `/AppData/Local/Google/Chrome/User Data/Default/Extensions/${ext.id}/${ext.version}`
+            );
+      
+            if (fs.existsSync(extensionPath)) {
+              await session.defaultSession.loadExtension(extensionPath);
+              console.log(`${ext.name} loaded successfully.`);
+            } else {
+              console.warn(`${ext.name} not found at ${extensionPath}.`);
+            }
+          }
+        } catch (error) {
+          console.error('Failed to load extensions:', error);
         }
-
-        // On linux
-        if (process.platform == 'linux') {
-          reactDevToolsPath = path.join(
-            os.homedir(),
-            '/.config/google-chrome/Default/Extensions/lmhkpmbekcpmknklioeibfkpmmfibljd/3.0.9_0'
-          );
-        }
-        // on macOS
-        if (process.platform == 'darwin') {
-          reactDevToolsPath = path.join(
-            os.homedir(),
-            '/Library/Application Support/Google/Chrome/Default/Extensions/lmhkpmbekcpmknklioeibfkpmmfibljd/3.0.9_0'
-          );
-        }
-
-        await session.defaultSession.loadExtension(reactDevToolsPath);
       }
+
       createWindow();
       app.on('activate', () => {
         // On macOS it's common to re-create a window in the app when the
@@ -320,40 +268,6 @@ if (!gotTheLock) {
  */
 
 var fetchItemClass = new fetchItems();
-
-// Version manager
-
-let gitHub = 0;
-ipcMain.on('needUpdate', async (event: any) => {
-  try {
-    if (gitHub == 0) {
-      getGithubVersion(process.platform).then((returnValue) => {
-        // Get the current version
-        const version = parseInt(
-          app.getVersion().toString().replaceAll('.', '')
-        );
-
-        // Check success status
-        let successStatus: boolean = false;
-        if (returnValue.version > version) {
-          successStatus = true;
-        } else {
-          successStatus = false;
-        }
-
-        // Send the event back back
-        event.reply('needUpdate-reply', {
-          requireUpdate: successStatus,
-          currentVersion: app.getVersion(),
-          githubResponse: returnValue,
-        });
-      });
-    }
-  } catch {
-    event.reply('needUpdate-reply', [false, app.getVersion(), 0]);
-    gitHub = 1;
-  }
-});
 
 // Return 1 = Success
 // Return 2 = Steam Guard
@@ -645,11 +559,6 @@ async function cancelLogin(user) {
   user.removeAllListeners('loginKey');
   user.removeAllListeners('steamGuard');
   user.removeAllListeners('error');
-}
-
-function sendUpdaterStatusToWindow(text) {
-  log.info(text);
-  mainWindow?.webContents.send('updater', [text]);
 }
 
 // Adds events listeners the user
